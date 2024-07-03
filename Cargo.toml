@@ -2,7 +2,15 @@
 name = "wasmer-tests"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
 
 [dependencies]
 anyhow = "1.0.86"
-wasmer = "4.3.2"
+dotenvy = "0.15.7"
+wasmer = { version = "4.3.2",  features = ["engine", "wat", "cranelift"], default-features = false}
+
+[workspace]
+members = ["./modules/simple-add-wasm/"]
+
+[profile.release.package."simple-add-wasm"]
+opt-level = 3
