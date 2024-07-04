@@ -10,7 +10,6 @@ use std::{
     env,
     fs::File,
     io::{BufReader, Read},
-    ptr::null,
     sync::{Arc, Mutex},
 };
 
@@ -18,11 +17,8 @@ use dotenvy::dotenv;
 use wasmer::{
     imports,
     sys::{EngineBuilder, Features},
-    wasmparser::{Export, Import},
-    AsEngineRef, AsStoreMut, AsStoreRef, Cranelift, Engine, Exports, Extern, ExternRef, Function,
-    FunctionEnv, FunctionEnvMut, Global, Imports, Instance, Memory, Memory32, Memory64, MemoryView,
-    Module, NativeEngineExt, RuntimeError, SharedMemory, Store, Type, TypedFunction, WasmPtr,
-    WasmTypeList,
+    Cranelift, Function, FunctionEnv, FunctionEnvMut, Instance, Memory, Memory32, Module,
+    RuntimeError, Store, TypedFunction, WasmPtr,
 };
 
 #[derive(Debug, Clone)]
@@ -122,20 +118,26 @@ fn main() -> anyhow::Result<()> {
     let run: TypedFunction<(), ()> = instance.exports.get_typed_function(&store, "run")?;
 
     run.call(&mut store)?;
+    let tell: TypedFunction<(WasmPtr<u8, Memory32>, u32), ()> = instance
+        .exports
+        .get_typed_function(&store, "tell")
+        .expect("the error is here");
     {
-        let tell: TypedFunction<(WasmPtr<u8, Memory32>, u32), ()> = instance
-            .exports
-            .get_typed_function(&store, "tell")
-            .expect("the error is here");
         let store_view = ins_memory.view(&store);
         let to_tell = "Rust and Wasmer is awesome";
         store_view.write(0, to_tell.as_bytes())?;
         let ptr = WasmPtr::<u8, Memory32>::new(0);
-        if let Ok(mut memory) = say_env_ins.memory.lock() {
+        /*if let Ok(mut memory) = say_env_ins.memory.lock() {
             memory.replace(ins_memory.clone());
-        }
+        } */
         tell.call(&mut store, ptr, to_tell.len() as u32)?;
     }
-
+    {
+        let store_view = ins_memory.view(&store);
+        let to_tell = "It worked hehe!";
+        store_view.write(0, to_tell.as_bytes())?;
+        let ptr = WasmPtr::<u8, Memory32>::new(0);
+        tell.call(&mut store, ptr, to_tell.len() as u32)?;
+    }
     Ok(())
 }
